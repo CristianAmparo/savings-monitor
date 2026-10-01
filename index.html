@@ -18,6 +18,8 @@
       try {
         var theme = JSON.parse(localStorage.getItem('sm.theme'));
         if (theme === 'light' || theme === 'dark') document.documentElement.setAttribute('data-theme', theme);
+        var dark = theme === 'dark' || (theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#0f1217' : '#f6f7f9');
       } catch (e) {}
     </script>
   </head>
