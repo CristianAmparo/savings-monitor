@@ -1,0 +1,99 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+h1, h2, h3, p, ul, ol, figure {
+  margin: 0;
+}
+
+ul, ol {
+  padding: 0;
+  list-style: none;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+/* Typography roles */
+.t-display { font-size: var(--text-display); font-weight: 700; line-height: 1.2; }
+.t-h1 { font-size: var(--text-h1); font-weight: 600; line-height: 1.3; }
+.t-h2 { font-size: var(--text-h2); font-weight: 600; line-height: 1.3; }
+.t-h3 { font-size: var(--text-h3); font-weight: 600; line-height: 1.4; }
+.t-body { font-size: var(--text-body); font-weight: 400; line-height: 1.5; }
+.t-label { font-size: var(--text-label); font-weight: 500; line-height: 1.4; }
+.t-helper { font-size: var(--text-helper); font-weight: 400; line-height: 1.4; }
+.t-caption { font-size: var(--text-caption); font-weight: 400; line-height: 1.4; }
+
+/* Utilities */
+.num { font-variant-numeric: tabular-nums; }
+.text-muted { color: var(--color-text-muted); }
+.text-success { color: var(--color-success); }
+.text-warning { color: var(--color-warning); }
+.text-error { color: var(--color-error); }
+.stack { display: flex; flex-direction: column; }
+.stack--2 { gap: var(--space-2); }
+.stack--4 { gap: var(--space-4); }
+.stack--6 { gap: var(--space-6); }
+.row { display: flex; align-items: center; }
+.row--2 { gap: var(--space-2); }
+.row--4 { gap: var(--space-4); }
+.row--between { justify-content: space-between; }
+.grow { flex: 1; min-width: 0; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.icon {
+  flex: none;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

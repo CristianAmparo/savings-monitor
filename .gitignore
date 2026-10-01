@@ -1,0 +1,4 @@
+# Personal data - never publish
+import/
+*.backup.json
+savings-monitor-backup-*.json
