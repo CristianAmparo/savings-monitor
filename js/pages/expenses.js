@@ -106,6 +106,11 @@ async function openExpense(existing) {
   const current = archived.find((a) => existing && a.id === existing.accountId);
   if (current) selectable.push(current);
 
+  // New expenses default to the "Cash" account and the "Food" category when they exist.
+  const named = (rows, name) => rows.find((r) => r.name.trim().toLowerCase() === name);
+  const defaultAccountId = (named(accounts, 'cash') || {}).id;
+  const defaultCategoryId = (named(categories, 'food') || {}).id;
+
   openSheet(existing ? 'Edit expense' : 'Add expense', (close) => {
     if (!selectable.length) {
       return h(
@@ -121,12 +126,12 @@ async function openExpense(existing) {
       accountId: selectField(
         'Paid from',
         selectable.map((a) => ({ value: a.id, label: `${a.name} (${balanceText(a.balance)})` })),
-        existing && selectable.some((a) => a.id === existing.accountId) ? existing.accountId : undefined,
+        existing ? (selectable.some((a) => a.id === existing.accountId) ? existing.accountId : undefined) : defaultAccountId,
       ),
       categoryId: selectField(
         'Category',
         categories.map((c) => ({ value: c.id, label: c.name })),
-        existing ? existing.categoryId : undefined,
+        existing ? existing.categoryId : defaultCategoryId,
       ),
       note: textField('Note (optional)', { value: existing ? existing.note : '', maxlength: 80 }),
     };
