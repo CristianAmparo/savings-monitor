@@ -53,6 +53,8 @@
 .actions-row { display: flex; gap: var(--space-2); }
 .actions-row > * { flex: 1; }
 
+.field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+
 /* ---------- Forms ---------- */
 .field { display: flex; flex-direction: column; gap: var(--space-1); }
 .field__label { font-size: var(--text-label); font-weight: 500; line-height: 1.4; }
@@ -129,6 +131,34 @@ button.list__row:hover { background: var(--color-surface-muted); }
 .list__sub { font-size: var(--text-label); color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list__value { flex: none; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
 .list__value-sub { display: block; font-size: var(--text-caption); font-weight: 400; color: var(--color-text-muted); }
+
+/* ---------- Sortable list ---------- */
+.sortable__row { transition: transform var(--transition); }
+.sortable__row--dragging { transition: none; z-index: 1; }
+.sortable__handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--control-height);
+  height: var(--control-height);
+  margin-left: calc(var(--space-3) * -1);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.sortable__handle:hover { background: var(--color-surface-muted); }
+.sortable__row--dragging {
+  background: var(--color-primary-subtle);
+  box-shadow: var(--shadow-md);
+  position: relative;
+}
+.sortable__row--dragging .sortable__handle { cursor: grabbing; }
 
 /* ---------- Tabs (segmented) ---------- */
 .tabs {
@@ -240,7 +270,7 @@ button.list__row:hover { background: var(--color-surface-muted); }
 }
 .chart__bar--zero { background: var(--color-border); }
 .chart__labels { display: flex; gap: var(--space-1); }
-.chart__label { flex: 1; min-width: 0; text-align: center; font-size: var(--text-caption); color: var(--color-text-muted); overflow: hidden; }
+.chart__label { flex: 1; min-width: 0; display: flex; justify-content: center; font-size: var(--text-caption); color: var(--color-text-muted); white-space: nowrap; }
 
 /* ---------- Breakdown row ---------- */
 .breakdown { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border); }

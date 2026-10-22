@@ -1,10 +1,11 @@
 import { h } from '../dom.js';
-import { addAccount, listAccounts } from '../db.js';
+import { addAccount, listAccounts, reorderAccounts } from '../db.js';
 import { todayISO } from '../format.js';
 import { refresh } from '../router.js';
 import { button, card, emptyState, iconButton, listRow, pageHeader, stat } from '../ui/components.js';
 import { amountField, clearErrors, readAmount, showError, textField } from '../ui/form.js';
 import { balanceText, hideToggle } from '../ui/money.js';
+import { sortableList } from '../ui/sortable.js';
 import { openSheet } from '../ui/sheet.js';
 import { toast } from '../ui/toast.js';
 
@@ -40,26 +41,41 @@ export function openAddAccount() {
   });
 }
 
+let reordering = false;
+
 export async function render() {
   const [accounts, archived] = await Promise.all([listAccounts(), listAccounts({ archived: true })]);
   const total = accounts.reduce((sum, a) => sum + a.balance, 0);
+  if (accounts.length < 2) reordering = false;
 
   const rows = accounts.map((a) => listRow({ title: a.name, value: balanceText(a.balance), href: `#/savings/${a.id}` }));
+  const list = reordering
+    ? sortableList(
+        accounts,
+        (a) => [h('span', { class: 'list__title' }, a.name), h('span', { class: 'list__sub num' }, balanceText(a.balance))],
+        reorderAccounts,
+      )
+    : h('div', { class: 'list' }, rows);
+
+  const actions = reordering
+    ? [button({ label: 'Done', variant: 'primary', size: 'sm', onClick: () => { reordering = false; refresh(); } })]
+    : [
+        hideToggle(refresh),
+        accounts.length > 1 ? iconButton({ iconName: 'arrow-up-down', label: 'Reorder accounts', onClick: () => { reordering = true; refresh(); } }) : null,
+        iconButton({ iconName: 'plus', label: 'Add account', onClick: openAddAccount }),
+      ];
 
   return h(
     'div',
     null,
-    pageHeader({
-      title: 'Savings',
-      actions: [hideToggle(refresh), iconButton({ iconName: 'plus', label: 'Add account', onClick: openAddAccount })],
-    }),
+    pageHeader({ title: 'Savings', actions }),
     card(stat('Total savings', balanceText(total), { hero: true })),
     h(
       'section',
       { class: 'section' },
       h('h2', { class: 't-h3 section__title' }, 'Accounts'),
       accounts.length
-        ? card(h('div', { class: 'list' }, rows), { flush: true })
+        ? card(list, { flush: true })
         : card(
             emptyState({
               iconName: 'wallet',

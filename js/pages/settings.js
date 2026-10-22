@@ -1,11 +1,12 @@
 import { h } from '../dom.js';
-import { addCategory, deleteCategory, exportAll, getMeta, importAll, importTaxi, listCategories, renameCategory, resetAll, setMeta } from '../db.js';
+import { addCategory, deleteCategory, exportAll, getMeta, importAll, importTaxi, listCategories, renameCategory, reorderCategories, resetAll, setMeta } from '../db.js';
 import { formatDate, todayISO } from '../format.js';
 import { applyTheme, getPref, setPref } from '../prefs.js';
 import { refresh } from '../router.js';
 import { button, card, listRow, pageHeader, tabs } from '../ui/components.js';
 import { clearErrors, showError, textField } from '../ui/form.js';
 import { confirmDialog, openSheet } from '../ui/sheet.js';
+import { sortableList } from '../ui/sortable.js';
 import { toast } from '../ui/toast.js';
 
 const THEMES = [
@@ -133,6 +134,8 @@ async function reset() {
   refresh();
 }
 
+let reorderingCategories = false;
+
 export async function render() {
   const [categories, lastBackup] = await Promise.all([listCategories(), getMeta('lastBackup')]);
   const fileInput = h('input', { type: 'file', accept: 'application/json,.json', class: 'sr-only', tabindex: '-1', onChange: (event) => { importData(event.target.files[0]); event.target.value = ''; } });
@@ -158,8 +161,27 @@ export async function render() {
     h(
       'section',
       { class: 'section' },
-      h('div', { class: 'section__head' }, h('h2', { class: 't-h3' }, 'Expense categories'), button({ label: 'Add', variant: 'ghost', size: 'sm', iconName: 'plus', onClick: () => openCategory(null) })),
-      card(h('div', { class: 'list' }, categories.map((c) => listRow({ title: c.name, onClick: () => openCategory(c) }))), { flush: true }),
+      h(
+        'div',
+        { class: 'section__head' },
+        h('h2', { class: 't-h3' }, 'Expense categories'),
+        h(
+          'div',
+          { class: 'row row--2' },
+          reorderingCategories
+            ? button({ label: 'Done', variant: 'primary', size: 'sm', onClick: () => { reorderingCategories = false; refresh(); } })
+            : [
+                categories.length > 1 ? button({ label: 'Reorder', variant: 'ghost', size: 'sm', iconName: 'arrow-up-down', onClick: () => { reorderingCategories = true; refresh(); } }) : null,
+                button({ label: 'Add', variant: 'ghost', size: 'sm', iconName: 'plus', onClick: () => openCategory(null) }),
+              ],
+        ),
+      ),
+      card(
+        reorderingCategories
+          ? sortableList(categories, (c) => h('span', { class: 'list__title' }, c.name), reorderCategories)
+          : h('div', { class: 'list' }, categories.map((c) => listRow({ title: c.name, onClick: () => openCategory(c) }))),
+        { flush: true },
+      ),
     ),
     h(
       'section',

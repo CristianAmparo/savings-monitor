@@ -120,10 +120,26 @@ function assertUniqueName(rows, name, exceptId, message, field = 'name') {
 }
 
 // ---------- Accounts ----------
+// Manual order lives in `order`; items never reordered fall back to their id, which keeps new items last.
+const byOrder = (a, b) => (a.order ?? a.id) - (b.order ?? b.id) || a.id - b.id;
+
 export async function listAccounts({ archived = false } = {}) {
   const rows = await read(['accounts'], (tx) => rq(tx.objectStore('accounts').getAll()));
-  return rows.filter((a) => Boolean(a.archived) === archived).sort((a, b) => a.id - b.id);
+  return rows.filter((a) => Boolean(a.archived) === archived).sort(byOrder);
 }
+
+async function saveOrder(storeName, ids) {
+  await write([storeName], async (tx) => {
+    const store = tx.objectStore(storeName);
+    for (const [index, id] of ids.entries()) {
+      const row = await rq(store.get(id));
+      if (row) await rq(store.put({ ...row, order: index }));
+    }
+  });
+}
+
+export const reorderAccounts = (ids) => saveOrder('accounts', ids);
+export const reorderCategories = (ids) => saveOrder('categories', ids);
 
 export async function getAccount(id) {
   return read(['accounts'], (tx) => rq(tx.objectStore('accounts').get(id)));
@@ -159,6 +175,11 @@ export function setArchived(id, archived) {
       throw new ValidationError('Only accounts with a zero balance can be archived.');
     }
     account.archived = archived;
+    if (!archived) {
+      // A restored account goes to the end of the list.
+      const all = await rq(store.getAll());
+      account.order = Math.max(-1, ...all.filter((a) => !a.archived).map((a) => a.order ?? a.id)) + 1;
+    }
     await rq(store.put(account));
   });
 }
@@ -259,7 +280,7 @@ export function deleteExpense(id) {
 // ---------- Categories ----------
 export async function listCategories() {
   const rows = await read(['categories'], (tx) => rq(tx.objectStore('categories').getAll()));
-  return rows.sort((a, b) => a.id - b.id);
+  return rows.sort(byOrder);
 }
 
 export function addCategory(name) {
@@ -274,7 +295,8 @@ export function renameCategory(id, name) {
   return write(['categories'], async (tx) => {
     const store = tx.objectStore('categories');
     assertUniqueName(await rq(store.getAll()), name, id, 'This category already exists.');
-    await rq(store.put({ id, name }));
+    const existing = await rq(store.get(id));
+    await rq(store.put({ ...existing, name }));
   });
 }
 

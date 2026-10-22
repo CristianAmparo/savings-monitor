@@ -27,13 +27,20 @@ const PERIODS = [
   { value: 'week', label: 'Week' },
   { value: 'month', label: 'Month' },
   { value: 'year', label: 'Year' },
+  { value: 'custom', label: 'Custom' },
 ];
 
+// Report state. Defaults to the current month; the category filter applies to every period.
 let period = 'month';
 let anchor = todayISO();
+let customFrom = monthStart(todayISO());
+let customTo = monthEnd(todayISO());
+let categoryFilter = 'all';
 
 function rangeFor() {
   switch (period) {
+    case 'custom':
+      return { start: customFrom, end: customTo, label: `${formatDateShort(customFrom)} – ${formatDate(customTo)}` };
     case 'day':
       return { start: anchor, end: anchor, label: formatDate(anchor) };
     case 'week': {
@@ -60,6 +67,14 @@ function shift(direction) {
 
 function buildBuckets(expenses, range) {
   if (period === 'day') return [];
+  if (period === 'custom' && daysBetween(range.start, range.end) + 1 > 31) {
+    // Long custom ranges are charted per month.
+    const keys = [];
+    for (let d = monthStart(range.start); d <= range.end; d = addMonths(d, 1)) keys.push(d.slice(0, 7));
+    const totals = new Map(keys.map((key) => [key, 0]));
+    expenses.forEach((e) => totals.set(e.date.slice(0, 7), (totals.get(e.date.slice(0, 7)) || 0) + e.amount));
+    return keys.map((key) => ({ total: totals.get(key), label: 'JFMAMJJASOND'[Number(key.slice(5)) - 1], title: formatMonth(key) }));
+  }
   if (period === 'year') {
     const totals = Array(12).fill(0);
     expenses.forEach((e) => (totals[Number(e.date.slice(5, 7)) - 1] += e.amount));
@@ -192,32 +207,56 @@ async function openExpense(existing) {
   });
 }
 
+function periodControls(range, categories) {
+  const controls = [tabs(PERIODS, period, (value) => { period = value; refresh(); }, 'Report period')];
+
+  if (period === 'custom') {
+    const from = dateField('From', customFrom);
+    const to = dateField('To', customTo);
+    from.control.addEventListener('change', () => { if (from.control.value) { customFrom = from.control.value; refresh(); } });
+    to.control.addEventListener('change', () => { if (to.control.value) { customTo = to.control.value; refresh(); } });
+    controls.push(h('div', { class: 'field-row' }, from.el, to.el));
+    if (customFrom > customTo) controls.push(alertBox('error', 'The From date must be on or before the To date.'));
+  } else {
+    controls.push(periodNav({ label: range.label, onPrev: () => shift(-1), onNext: () => shift(1), prevLabel: 'Previous period', nextLabel: 'Next period' }));
+  }
+
+  const category = selectField('Category', [{ value: 'all', label: 'All categories' }, ...categories.map((c) => ({ value: c.id, label: c.name }))], categoryFilter);
+  category.control.addEventListener('change', () => { categoryFilter = category.control.value; refresh(); });
+  controls.push(category.el);
+  return controls;
+}
+
 export async function render() {
   const range = rangeFor();
-  const [expenses, accounts, archived, categories] = await Promise.all([
-    listExpenses(range.start, range.end),
+  const rangeValid = range.start <= range.end;
+  const [fetched, accounts, archived, categories] = await Promise.all([
+    rangeValid ? listExpenses(range.start, range.end) : [],
     listAccounts(),
     listAccounts({ archived: true }),
     listCategories(),
   ]);
+  if (categoryFilter !== 'all' && !categories.some((c) => String(c.id) === String(categoryFilter))) categoryFilter = 'all';
+  const filtered = categoryFilter !== 'all';
+  const expenses = filtered ? fetched.filter((e) => String(e.categoryId) === String(categoryFilter)) : fetched;
   const accountNames = new Map([...accounts, ...archived].map((a) => [a.id, a.name]));
   const categoryNames = new Map(categories.map((c) => [c.id, c.name]));
 
   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
   const today = todayISO();
-  const elapsed = today < range.start ? 0 : daysBetween(range.start, range.end < today ? range.end : today) + 1;
+  const elapsed = !rangeValid || today < range.start ? 0 : daysBetween(range.start, range.end < today ? range.end : today) + 1;
   const average = elapsed ? Math.round(total / elapsed) : 0;
 
   const byCategory = new Map();
   expenses.forEach((e) => byCategory.set(e.categoryId, (byCategory.get(e.categoryId) || 0) + e.amount));
   const breakdown = [...byCategory.entries()].sort((a, b) => b[1] - a[1]);
 
-  const buckets = buildBuckets(expenses, range);
+  const buckets = rangeValid ? buildBuckets(expenses, range) : [];
 
   const rows = expenses.map((e) =>
     listRow({
       title: categoryNames.get(e.categoryId) || 'Uncategorized',
-      sub: [period === 'day' ? null : formatDateShort(e.date), accountNames.get(e.accountId) || 'Deleted account', e.note].filter(Boolean).join(' · '),
+      sub: [period === 'day' ? null : formatDate(e.date), accountNames.get(e.accountId) || 'Deleted account', e.note].filter(Boolean).join(' · '),
       value: peso(e.amount),
       onClick: () => openExpense(e),
     }),
@@ -227,12 +266,7 @@ export async function render() {
     'div',
     null,
     pageHeader({ title: 'Expenses', actions: [button({ label: 'Add', variant: 'primary', iconName: 'plus', size: 'sm', onClick: () => openExpense() })] }),
-    h(
-      'div',
-      { class: 'stack stack--4' },
-      tabs(PERIODS, period, (value) => { period = value; refresh(); }, 'Report period'),
-      periodNav({ label: range.label, onPrev: () => shift(-1), onNext: () => shift(1), prevLabel: 'Previous period', nextLabel: 'Next period' }),
-    ),
+    h('div', { class: 'stack stack--4' }, periodControls(range, categories)),
     h(
       'section',
       { class: 'section' },
@@ -240,12 +274,12 @@ export async function render() {
         h(
           'div',
           { class: 'stack stack--4' },
-          h('div', { class: 'row row--between' }, stat('Total spent', peso(total), { hero: true }), stat('Daily average', peso(average))),
+          h('div', { class: 'row row--between' }, stat(filtered ? `Spent on ${categoryNames.get(Number(categoryFilter)) || 'category'}` : 'Total spent', peso(total), { hero: true }), stat('Daily average', peso(average))),
           buckets.length ? chart(buckets) : null,
         ),
       ),
     ),
-    breakdown.length
+    breakdown.length && !filtered
       ? h(
           'section',
           { class: 'section' },

@@ -18,6 +18,7 @@ const ASSETS = [
   './js/ui/components.js',
   './js/ui/sheet.js',
   './js/ui/toast.js',
+  './js/ui/sortable.js',
   './js/ui/form.js',
   './js/pages/home.js',
   './js/pages/savings.js',
